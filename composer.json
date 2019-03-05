@@ -1,0 +1,35 @@
+{
+    "name": "ecomdev/image-resize-server",
+    "description": "Async Image Resize Server",
+    "type": "library",
+    "autoload": {
+        "psr-4": {
+            "EcomDev\\ImageResizeServer\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "EcomDev\\ImageResizeServer\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^8.0",
+        "behat/behat": "^3.5",
+        "ecomdev/react-event-loop-test-utils": "^1.1",
+        "guzzlehttp/guzzle": "^6.3"
+    },
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Ivan Chepurnyi",
+            "email": "ivan.chepurnyi@ecomdev.org"
+        }
+    ],
+    "require": {
+        "react/filesystem": "^0.1.2",
+        "react/http": "^0.8.4",
+        "react/socket": "^1.2",
+        "react/event-loop": "^1.1",
+        "react/child-process": "^0.6.1"
+    }
+}

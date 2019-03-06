@@ -32,6 +32,6 @@ class ReactHttpServerFactory
 
     public static function createFromLoopWithPort(LoopInterface $loop, int $port)
     {
-        return new self(new Server($port, $loop, ['so_reuseport' => true]));
+        return new self(new Server($port, $loop, ['so_reuseport' => true, 'backlog' => 200]));
     }
 }

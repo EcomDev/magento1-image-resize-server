@@ -72,7 +72,7 @@ class ReactApplication implements Application, ImageObserver, FileReaderObserver
     public function __invoke(ServerRequestInterface $request)
     {
         try {
-            $image = $this->imageGateway->findImage($request->getUri()->getPath());
+            $image = $this->imageGateway->findImage(urldecode($request->getUri()->getPath()));
 
             return new Promise(function ($resolve) use ($image) {
                 $this->images[spl_object_hash($image)] = $resolve;

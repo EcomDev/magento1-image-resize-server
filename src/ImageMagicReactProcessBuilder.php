@@ -10,14 +10,12 @@ namespace EcomDev\ImageResizeServer;
 
 use React\ChildProcess\Process;
 
-class ImageMagicReactProcessBuilder
+class ImageMagicReactProcessBuilder implements ReactChildProcessBuilder
 {
     const DEFAULT_LIMIT = 10;
 
     private $resize = [];
 
-    /** @var array */
-    private $imageOptions = [];
 
     /** @var int */
     private $limit;
@@ -35,45 +33,7 @@ class ImageMagicReactProcessBuilder
         $this->basePath = $basePath;
     }
 
-    public static function create(int $limit = self::DEFAULT_LIMIT, array $imageOptions = []): self
-    {
-        return new self(
-            self::buildImageMagicResizeOptions($imageOptions),
-            rtrim($imageOptions['path'] ?? '', DIRECTORY_SEPARATOR),
-            $limit
-        );
-    }
-
-    private static function buildImageMagicResizeOptions(array $imageOptions): string
-    {
-        $optionMap = [
-            'sampling' => ['-sampling-factor', false],
-            'quality' => ['-quality', false],
-            'interlace' => ['-interlace', false],
-            'filter' => ['-filter', false],
-            'strip' => ['-strip', true],
-        ];
-
-        $options = [];
-
-        foreach ($optionMap as $key => list($name, $isBoolean)) {
-            $value = $imageOptions[$key] ?? null;
-
-            if ($value && !$isBoolean) {
-                if (is_int($value)) {
-                    $options[] = sprintf(' %s %d', $name, $value);
-                } else {
-                    $options[] = sprintf(' %s %s', $name, escapeshellarg($value));
-                }
-            } elseif ($value && $isBoolean) {
-                $options[] = sprintf(' %s', $name);
-            }
-        }
-
-        return implode('', $options);
-    }
-
-    public function withResize(string $source, string $target, int $width, int $height): self
+    public function withResize(string $source, string $target, int $width, int $height): ReactChildProcessBuilder
     {
         $builder = clone $this;
         $builder->resize[$source][$target] = [$width, $height, $target];

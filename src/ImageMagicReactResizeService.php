@@ -8,6 +8,7 @@ declare(strict_types=1);
 
 namespace EcomDev\ImageResizeServer;
 
+use DateTimeImmutable;
 use React\ChildProcess\Process;
 use React\EventLoop\LoopInterface;
 
@@ -36,26 +37,11 @@ class ImageMagicReactResizeService implements ResizeService
      */
     private $concurrency;
 
-    public function __construct(ImageMagicReactProcessBuilder $processBuilder, LoopInterface $loop, int $concurrency)
+    public function __construct(ReactChildProcessBuilder $processBuilder, LoopInterface $loop, int $concurrency)
     {
         $this->processBuilder = $processBuilder;
         $this->loop = $loop;
         $this->concurrency = $concurrency;
-    }
-
-    public static function createFromLoop(
-        LoopInterface $loop,
-        ImageMagicReactProcessBuilder $builder = null,
-        int $concurrency = self::DEFAULT_CONCURRENCY
-    ): self {
-        $resizeService = new self(
-            $builder ?? ImageMagicReactProcessBuilder::create(),
-            $loop,
-            $concurrency
-        );
-
-        $loop->addPeriodicTimer(0.001, $resizeService);
-        return $resizeService;
     }
 
     public function resize(string $source, array $variations, ResizeServiceObserver $observer): void
@@ -65,6 +51,10 @@ class ImageMagicReactResizeService implements ResizeService
 
     public function __invoke()
     {
+        if (count($this->processes) >= $this->concurrency) {
+            $this->cleanUp();
+        }
+
         if (!$this->resizeList || count($this->processes) >= $this->concurrency) {
             return;
         }
@@ -97,12 +87,14 @@ class ImageMagicReactResizeService implements ResizeService
      * @param ResizeServiceObserver[] $observers
      *
      */
-    private function startProcess(ImageMagicReactProcessBuilder $builder, array $observers): void
+    private function startProcess(ReactChildProcessBuilder $builder, array $observers): void
     {
         $process = $builder->build();
         $processId = spl_object_hash($process);
 
-        $this->processes[$processId] = $process;
+        $startTime = new DateTimeImmutable();
+
+        $this->processes[$processId] = [$startTime, $process];
         $process->start($this->loop);
 
         $process->on(
@@ -122,7 +114,16 @@ class ImageMagicReactResizeService implements ResizeService
                 }
             }
         );
+    }
 
+    private function cleanUp()
+    {
+        $currentTime = new DateTimeImmutable();
 
+        foreach ($this->processes as $processId => list($startTime, $process)) {
+            if (($currentTime->getTimestamp() - $startTime->getTimestamp()) > 4) {
+                $process->terminate();
+            }
+        }
     }
 }

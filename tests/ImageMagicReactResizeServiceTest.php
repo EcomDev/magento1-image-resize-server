@@ -34,11 +34,14 @@ class ImageMagicReactResizeServiceTest extends TestCase implements ResizeService
     {
         $this->tmpDir = TestDirectory::create();
         $this->tmpDir->copyFrom(__DIR__ . '/fixtures');
-        $this->loop = LoopFactory::create()->createConditionRunLoop(function () {
-            return count($this->actions) === $this->minimumActions;
-        });
+        $this->loop = LoopFactory::create()->createConditionRunLoopWithTimeout(
+            function () {
+                return count($this->actions) === $this->minimumActions;
+            },
+            12.0
+        );
 
-        $this->builder = (new ImageMagicReactResizeServiceBuilder($this->loop))
+        $this->builder = (new ImageMagicReactResizeServiceBuilder($this->loop, new ImageMagicReactProcessBuilderFactory()))
             ->withBaseDirectory(
                 $this->tmpDir->resolvePath('images')
             )
@@ -190,6 +193,37 @@ class ImageMagicReactResizeServiceTest extends TestCase implements ResizeService
         $this->assertActions(
             ['complete', $this->tmpDir->resolvePath('images/square150x200.jpg')],
             ['complete', $this->tmpDir->resolvePath('images/portrait150x200.jpg')]
+        );
+    }
+
+    /** @test */
+    public function killsHangResizeProcesses()
+    {
+        $service = (new ImageMagicReactResizeServiceBuilder($this->loop, new HangReactChildProcessBuilderFactoryStub()))
+            ->withBaseDirectory(
+                $this->tmpDir->resolvePath('images')
+            )
+            ->withWorkerImageLimit(1)
+            ->withWorkerLimit(1)
+            ->build();
+
+        $service->resize(
+            $this->tmpDir->resolvePath('images/square.jpg'),
+            [$this->tmpDir->resolvePath('images/square150x200.jpg') => [150, 200]],
+            $this
+        );
+
+        $service->resize(
+            $this->tmpDir->resolvePath('images/portrait.jpg'),
+            [$this->tmpDir->resolvePath('images/portrait150x200.jpg') => [150, 200]],
+            $this
+        );
+
+        $this->runLoop(2);
+
+        $this->assertActions(
+            ['failed', $this->tmpDir->resolvePath('images/square150x200.jpg')],
+            ['failed', $this->tmpDir->resolvePath('images/portrait150x200.jpg')]
         );
     }
 

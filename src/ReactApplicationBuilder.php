@@ -61,7 +61,7 @@ class ReactApplicationBuilder implements ApplicationBuilder
             ReactFileAdapterFactory::createFromLoop($loop),
             ReactHttpServerFactory::createFromLoopWithPort($loop, $port),
             ImageGatewayBuilder::createDefault(),
-            new ImageMagicReactResizeServiceBuilder($loop),
+            new ImageMagicReactResizeServiceBuilder($loop, new ImageMagicReactProcessBuilderFactory()),
             new ReactBackgroundResizeQueueFactory()
         );
     }

@@ -100,7 +100,7 @@ class ReactApplicationTest extends TestCase
 
         $request = new Request('GET', 'cache/100x100/small/landscape.jpg');
 
-        $responses = Pool::batch($this->httpClient, array_fill(0, 1000, $request));
+        $responses = Pool::batch($this->httpClient, array_fill(0, 200, $request));
         foreach ($responses as $response) {
             $this->assertResponse(
                 200,

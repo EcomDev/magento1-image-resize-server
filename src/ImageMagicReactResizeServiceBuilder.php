@@ -26,10 +26,17 @@ class ImageMagicReactResizeServiceBuilder
      */
     private $loop;
 
+    /**
+     * @var ReactChildProcessBuilderFactory
+     */
+    private $processBuilderFactory;
+
     public function __construct(
-        LoopInterface $loop
+        LoopInterface $loop,
+        ReactChildProcessBuilderFactory $processBuilderFactory
     ) {
         $this->loop = $loop;
+        $this->processBuilderFactory = $processBuilderFactory;
     }
 
     public function withWorkerLimit(int $workerLimit): self
@@ -63,7 +70,7 @@ class ImageMagicReactResizeServiceBuilder
     public function build(): ImageMagicReactResizeService
     {
         $resizeService = new ImageMagicReactResizeService(
-            ImageMagicReactProcessBuilder::create(
+            $this->processBuilderFactory->create(
                 $this->workerImageLimit,
                 ($this->baseDirectory ? ['path' => $this->baseDirectory] : []) + $this->resizeOptions
             ),
@@ -71,7 +78,7 @@ class ImageMagicReactResizeServiceBuilder
             $this->workerLimit
         );
 
-        $this->loop->addPeriodicTimer(0.001, $resizeService);
+        $this->loop->addPeriodicTimer(0.005, $resizeService);
 
         return $resizeService;
     }

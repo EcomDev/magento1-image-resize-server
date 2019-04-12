@@ -31,12 +31,19 @@ class ImageMagicReactResizeServiceBuilder
      */
     private $processBuilderFactory;
 
+    /**
+     * @var ReactFileAdapterFactory
+     */
+    private $fileAdapterFactory;
+
     public function __construct(
         LoopInterface $loop,
-        ReactChildProcessBuilderFactory $processBuilderFactory
+        ReactChildProcessBuilderFactory $processBuilderFactory,
+        ReactFileAdapterFactory $fileAdapterFactory
     ) {
         $this->loop = $loop;
         $this->processBuilderFactory = $processBuilderFactory;
+        $this->fileAdapterFactory = $fileAdapterFactory;
     }
 
     public function withWorkerLimit(int $workerLimit): self
@@ -75,7 +82,8 @@ class ImageMagicReactResizeServiceBuilder
                 ($this->baseDirectory ? ['path' => $this->baseDirectory] : []) + $this->resizeOptions
             ),
             $this->loop,
-            $this->workerLimit
+            $this->workerLimit,
+            $this->fileAdapterFactory->createFinder()
         );
 
         $this->loop->addPeriodicTimer(0.005, $resizeService);

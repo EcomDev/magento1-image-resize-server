@@ -41,7 +41,11 @@ class ImageMagicReactResizeServiceTest extends TestCase implements ResizeService
             12.0
         );
 
-        $this->builder = (new ImageMagicReactResizeServiceBuilder($this->loop, new ImageMagicReactProcessBuilderFactory()))
+        $this->builder = (new ImageMagicReactResizeServiceBuilder(
+                $this->loop,
+                new ImageMagicReactProcessBuilderFactory(),
+                ReactFileAdapterFactory::createFromLoop($this->loop)
+            ))
             ->withBaseDirectory(
                 $this->tmpDir->resolvePath('images')
             )
@@ -120,7 +124,7 @@ class ImageMagicReactResizeServiceTest extends TestCase implements ResizeService
             $image,
             [
                 $this->tmpDir->resolvePath('images/fail-dir/square100x100.jpg') => [100, 100],
-                $this->tmpDir->resolvePath('images/square150x200.jpg') => [150, 200],
+                $this->tmpDir->resolvePath('images/fail-dir/square150x200.jpg') => [150, 200],
             ],
             $this
         );
@@ -129,7 +133,28 @@ class ImageMagicReactResizeServiceTest extends TestCase implements ResizeService
 
         $this->assertActions(
             ['failed', $this->tmpDir->resolvePath('images/fail-dir/square100x100.jpg')],
-            ['failed', $this->tmpDir->resolvePath('images/square150x200.jpg')]
+            ['failed', $this->tmpDir->resolvePath('images/fail-dir/square150x200.jpg')]
+        );
+    }
+
+    /** @test */
+    public function notifiesOfPartiallyCompletedImageResize()
+    {
+        $image = $this->tmpDir->resolvePath('images/square.jpg');
+        $this->builder->build()->resize(
+            $image,
+            [
+                $this->tmpDir->resolvePath('images/square150x200.jpg') => [150, 200],
+                $this->tmpDir->resolvePath('images/fail-dir/square100x100.jpg') => [100, 100],
+            ],
+            $this
+        );
+
+        $this->runLoop(2);
+
+        $this->assertActions(
+            ['complete', $this->tmpDir->resolvePath('images/square150x200.jpg')],
+            ['failed', $this->tmpDir->resolvePath('images/fail-dir/square100x100.jpg')]
         );
     }
 
@@ -199,7 +224,11 @@ class ImageMagicReactResizeServiceTest extends TestCase implements ResizeService
     /** @test */
     public function killsHangResizeProcesses()
     {
-        $service = (new ImageMagicReactResizeServiceBuilder($this->loop, new HangReactChildProcessBuilderFactoryStub()))
+        $service = (new ImageMagicReactResizeServiceBuilder(
+                $this->loop,
+                new HangReactChildProcessBuilderFactoryStub(),
+                ReactFileAdapterFactory::createFromLoop($this->loop)
+            ))
             ->withBaseDirectory(
                 $this->tmpDir->resolvePath('images')
             )

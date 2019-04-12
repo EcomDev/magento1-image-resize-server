@@ -56,12 +56,18 @@ class ReactApplicationBuilder implements ApplicationBuilder
     public static function create(int $port)
     {
         $loop = Factory::create();
+        $fileAdapterFactory = ReactFileAdapterFactory::createFromLoop($loop);
+
         return new self(
             $loop,
-            ReactFileAdapterFactory::createFromLoop($loop),
+            $fileAdapterFactory,
             ReactHttpServerFactory::createFromLoopWithPort($loop, $port),
             ImageGatewayBuilder::createDefault(),
-            new ImageMagicReactResizeServiceBuilder($loop, new ImageMagicReactProcessBuilderFactory()),
+            new ImageMagicReactResizeServiceBuilder(
+                $loop,
+                new ImageMagicReactProcessBuilderFactory(),
+                $fileAdapterFactory
+            ),
             new ReactBackgroundResizeQueueFactory()
         );
     }

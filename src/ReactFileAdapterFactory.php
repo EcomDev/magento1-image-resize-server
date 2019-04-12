@@ -11,11 +11,17 @@ namespace EcomDev\ImageResizeServer;
 
 use React\EventLoop\LoopInterface;
 use React\Filesystem\Filesystem;
+use React\Filesystem\FilesystemInterface;
 
 class ReactFileAdapterFactory
 {
     /** @var LoopInterface */
     private $loop;
+
+    /**
+     * @var FilesystemInterface
+     */
+    private $filesystem;
 
     public function __construct(LoopInterface $loop)
     {
@@ -29,11 +35,20 @@ class ReactFileAdapterFactory
 
     public function createReader(): FileReader
     {
-        return new ReactFileAdapter(Filesystem::create($this->loop));
+        return new ReactFileAdapter($this->createFileSystemOnlyOnce());
     }
 
     public function createFinder(): FileFinder
     {
-        return new ReactFileAdapter(Filesystem::create($this->loop));
+        return new ReactFileAdapter($this->createFileSystemOnlyOnce());
+    }
+
+    private function createFileSystemOnlyOnce(): FilesystemInterface
+    {
+        if (!$this->filesystem) {
+            $this->filesystem = Filesystem::create($this->loop);
+        }
+
+        return $this->filesystem;
     }
 }

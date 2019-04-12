@@ -12,7 +12,7 @@ use DateTimeImmutable;
 use React\ChildProcess\Process;
 use React\EventLoop\LoopInterface;
 
-class ImageMagicReactResizeService implements ResizeService
+class ImageMagicReactResizeService implements ResizeService, FileFinderObserver
 {
     private const DEFAULT_CONCURRENCY = 3;
 
@@ -37,11 +37,24 @@ class ImageMagicReactResizeService implements ResizeService
      */
     private $concurrency;
 
-    public function __construct(ReactChildProcessBuilder $processBuilder, LoopInterface $loop, int $concurrency)
-    {
+    /**
+     * @var FileFinder
+     */
+    private $fileFinder;
+
+    /** @var ResizeServiceObserver[][] */
+    private $failedFileList = [];
+
+    public function __construct(
+        ReactChildProcessBuilder $processBuilder,
+        LoopInterface $loop,
+        int $concurrency,
+        FileFinder $fileFinder
+    ) {
         $this->processBuilder = $processBuilder;
         $this->loop = $loop;
         $this->concurrency = $concurrency;
+        $this->fileFinder = $fileFinder;
     }
 
     public function resize(string $source, array $variations, ResizeServiceObserver $observer): void
@@ -110,7 +123,8 @@ class ImageMagicReactResizeService implements ResizeService
                 }
 
                 foreach ($observers as $target => $observer) {
-                    $observer->handleResizeFailed($target);
+                    $this->failedFileList[$target][] = $observer;
+                    $this->fileFinder->findFile($target, $this);
                 }
             }
         );
@@ -125,5 +139,26 @@ class ImageMagicReactResizeService implements ResizeService
                 $process->terminate();
             }
         }
+    }
+
+    public function handleFoundFile(FileFinder $finder, string $fileName): void
+    {
+        $observers = $this->failedFileList[$fileName] ?? [];
+        foreach ($observers as $observer) {
+            $observer->handleResizeComplete($fileName);
+        }
+
+        unset($this->failedFileList[$fileName]);
+    }
+
+    public function handleMissingFile(FileFinder $finder, string $fileName): void
+    {
+        $observers = $this->failedFileList[$fileName] ?? [];
+
+        foreach ($observers as $observer) {
+            $observer->handleResizeFailed($fileName);
+        }
+
+        unset($this->failedFileList[$fileName]);
     }
 }

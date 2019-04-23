@@ -285,6 +285,8 @@ class ImageMagicReactResizeServiceTest extends TestCase implements ResizeService
             $this
         );
 
+
+
         $this->runLoop(4);
 
         $this->assertActions(
@@ -292,6 +294,61 @@ class ImageMagicReactResizeServiceTest extends TestCase implements ResizeService
             ['complete', $this->tmpDir->resolvePath('images/portrait150x200.jpg')],
             ['complete', $this->tmpDir->resolvePath('images/landscape150x200.jpg')],
             ['complete', $this->tmpDir->resolvePath('images/square100x100.jpg')]
+        );
+    }
+
+    /** @test */
+    public function preventsLockingProcessesToOccur()
+    {
+        $service = $this->builder->withWorkerLimit(2)->withWorkerImageLimit(100)->build();
+
+        $service->resize(
+            $this->tmpDir->resolvePath('images/square.jpg'),
+            [$this->tmpDir->resolvePath('images/square150x200.jpg') => [150, 200]],
+            $this
+        );
+
+        $service->resize(
+            $this->tmpDir->resolvePath('images/portrait.jpg'),
+            [$this->tmpDir->resolvePath('images/portrait150x200.jpg') => [150, 200]],
+            $this
+        );
+
+        $service->resize(
+            $this->tmpDir->resolvePath('images/landscape.jpg'),
+            [$this->tmpDir->resolvePath('images/landscape150x200.jpg') => [150, 200]],
+            $this
+        );
+
+        $service->resize(
+            $this->tmpDir->resolvePath('images/square.jpg'),
+            [$this->tmpDir->resolvePath('images/square100x100.jpg') => [100, 100]],
+            $this
+        );
+
+        $this->loop->addTimer(0.005, function () use ($service) {
+            $service->resize(
+                $this->tmpDir->resolvePath('images/landscape.jpg'),
+                [$this->tmpDir->resolvePath('images/landscape150x200.jpg') => [100, 100]],
+                $this
+            );
+
+            $service->resize(
+                $this->tmpDir->resolvePath('images/square.jpg'),
+                [$this->tmpDir->resolvePath('images/landscape200x200.jpg') => [200, 200]],
+                $this
+            );
+        });
+
+        $this->runLoop(6);
+
+        $this->assertActions(
+            ['complete', $this->tmpDir->resolvePath('images/square150x200.jpg')],
+            ['complete', $this->tmpDir->resolvePath('images/portrait150x200.jpg')],
+            ['complete', $this->tmpDir->resolvePath('images/landscape150x200.jpg')],
+            ['complete', $this->tmpDir->resolvePath('images/square100x100.jpg')],
+            ['complete', $this->tmpDir->resolvePath('images/landscape150x200.jpg')],
+            ['complete', $this->tmpDir->resolvePath('images/landscape200x200.jpg')]
         );
     }
 

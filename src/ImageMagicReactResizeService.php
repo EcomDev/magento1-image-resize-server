@@ -14,8 +14,6 @@ use React\EventLoop\LoopInterface;
 
 class ImageMagicReactResizeService implements ResizeService, FileFinderObserver
 {
-    private const DEFAULT_CONCURRENCY = 3;
-
     /**
      * @var ImageMagicReactProcessBuilder
      */
@@ -44,6 +42,8 @@ class ImageMagicReactResizeService implements ResizeService, FileFinderObserver
 
     /** @var ResizeServiceObserver[][] */
     private $failedFileList = [];
+
+    private $lockedFiles = [];
 
     public function __construct(
         ReactChildProcessBuilder $processBuilder,
@@ -75,13 +75,20 @@ class ImageMagicReactResizeService implements ResizeService, FileFinderObserver
         $builder = $this->processBuilder;
         $observers = [];
 
+        $scheduleLater = [];
 
         while ($this->resizeList && count($this->processes) < $this->concurrency) {
             list($source, $variations, $observer) = array_shift($this->resizeList);
 
+            if (in_array($source, $this->lockedFiles, true)) {
+                $scheduleLater[] = [$source, $variations, $observer];
+                continue;
+            }
+
             foreach ($variations as $target => list($width, $height)) {
-                $observers[$target] = $observer;
+                $this->lockedFiles[$target] = $source;
                 $builder = $builder->withResize($source, $target, $width, $height);
+                $observers[$target] = $observer;
             }
 
             if ($builder->isFull()) {
@@ -93,6 +100,10 @@ class ImageMagicReactResizeService implements ResizeService, FileFinderObserver
 
         if ($observers) {
             $this->startProcess($builder, $observers);
+        }
+
+        if ($scheduleLater) {
+            $this->resizeList = array_merge($this->resizeList, $scheduleLater);
         }
     }
 
@@ -117,6 +128,7 @@ class ImageMagicReactResizeService implements ResizeService, FileFinderObserver
 
                 if ($exit === 0) {
                     foreach ($observers as $target => $observer) {
+                        unset($this->lockedFiles[$target]);
                         $observer->handleResizeComplete($target);
                     }
                     return;
@@ -148,7 +160,7 @@ class ImageMagicReactResizeService implements ResizeService, FileFinderObserver
             $observer->handleResizeComplete($fileName);
         }
 
-        unset($this->failedFileList[$fileName]);
+        unset($this->failedFileList[$fileName], $this->lockedFiles[$fileName]);
     }
 
     public function handleMissingFile(FileFinder $finder, string $fileName): void
@@ -159,6 +171,6 @@ class ImageMagicReactResizeService implements ResizeService, FileFinderObserver
             $observer->handleResizeFailed($fileName);
         }
 
-        unset($this->failedFileList[$fileName]);
+        unset($this->failedFileList[$fileName], $this->lockedFiles[$fileName]);
     }
 }

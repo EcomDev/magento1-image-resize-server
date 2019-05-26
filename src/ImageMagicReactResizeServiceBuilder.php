@@ -86,7 +86,7 @@ class ImageMagicReactResizeServiceBuilder
             $this->fileAdapterFactory->createFinder()
         );
 
-        $this->loop->addPeriodicTimer(0.005, $resizeService);
+        $this->loop->addPeriodicTimer(0.05, $resizeService);
 
         return $resizeService;
     }

@@ -148,7 +148,9 @@ class ImageMagicReactResizeService implements ResizeService, FileFinderObserver
 
         foreach ($this->processes as $processId => list($startTime, $process)) {
             if (($currentTime->getTimestamp() - $startTime->getTimestamp()) > 4) {
-                $process->terminate();
+                $process->terminate(SIGKILL);
+
+                unset($this->processes[$processId]);
             }
         }
     }

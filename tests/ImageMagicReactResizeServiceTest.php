@@ -41,11 +41,13 @@ class ImageMagicReactResizeServiceTest extends TestCase implements ResizeService
             12.0
         );
 
-        $this->builder = (new ImageMagicReactResizeServiceBuilder(
+        $this->builder = (
+            new ImageMagicReactResizeServiceBuilder(
                 $this->loop,
                 new ImageMagicReactProcessBuilderFactory(),
                 ReactFileAdapterFactory::createFromLoop($this->loop)
-            ))
+            )
+        )
             ->withBaseDirectory(
                 $this->tmpDir->resolvePath('images')
             )
